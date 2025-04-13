@@ -18,11 +18,11 @@ const languageMap: Record<string, LanguageCode> = {
  */
 export async function recognizeText(
   imageFile: File,
-  language: string = 'en'
+  language: string = 'tel'
 ): Promise<string> {
   try {
     // Convert our app language code to Tesseract language code
-    const tesseractLang = languageMap[language] || 'eng';
+    const tesseractLang = languageMap[language] || 'tel';
 
     // Create a scheduler and worker
     const worker = await Tesseract.createWorker(tesseractLang);

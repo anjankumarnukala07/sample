@@ -606,8 +606,7 @@ export default function RapidFire({ user, currentLanguage, difficulty = "beginne
                   
                   <Progress
                     value={wordTimerPercentage}
-                    className="h-2 mb-6"
-                    indicatorClassName={wordTimerPercentage > 66 ? "bg-green-500" : wordTimerPercentage > 33 ? "bg-yellow-500" : "bg-red-500"}
+                    className={`h-2 mb-6 ${wordTimerPercentage > 66 ? "bg-green-100" : wordTimerPercentage > 33 ? "bg-yellow-100" : "bg-red-100"}`}
                   />
                   
                   <div className="bg-gray-50 p-8 rounded-lg mb-6 text-center">

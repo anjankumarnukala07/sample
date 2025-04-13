@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import GameSection from "@/components/home/GameSection";
+import GameContainer from "@/components/games/GameContainer";
 
 interface GamesProps {
   user: Omit<User, "password">;
@@ -42,6 +43,8 @@ export default function Games({ user, currentLanguage }: GamesProps) {
     );
   }
 
+  // Game detail section
+  
   // If we have a game ID and game data, show the game detail
   if (gameId && game) {
     return (
@@ -57,45 +60,51 @@ export default function Games({ user, currentLanguage }: GamesProps) {
         
         <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
           <div className="p-6">
-            <img 
-              src={game.imageUrl} 
-              alt={game.title}
-              className="w-full h-64 object-cover rounded-lg mb-6"
-            />
-            
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center">
-                <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
-                  {game.difficulty === 'beginner' ? 'Beginner Level' : 
-                   game.difficulty === 'intermediate' ? 'Intermediate Level' : 
-                   game.difficulty === 'advanced' ? 'Advanced Level' : 'All Levels'}
-                </span>
-                <span className="mx-3 text-gray-400">•</span>
-                <span className="text-gray-600">
-                  {currentLanguage === "te" ? "Telugu" : 
-                   currentLanguage === "hi" ? "Hindi" : "English"}
-                </span>
+            <div className="flex flex-col lg:flex-row gap-8">
+              <div className="lg:w-1/3">
+                <img 
+                  src={game.imageUrl} 
+                  alt={game.title}
+                  className="w-full h-64 object-cover rounded-lg mb-6"
+                />
+                
+                <div className="flex items-center space-x-3 mb-4">
+                  <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
+                    {game.difficulty === 'beginner' ? 'Beginner Level' : 
+                     game.difficulty === 'intermediate' ? 'Intermediate Level' : 
+                     game.difficulty === 'advanced' ? 'Advanced Level' : 'All Levels'}
+                  </span>
+                  <span className="text-gray-600">
+                    {currentLanguage === "te" ? "Telugu" : 
+                     currentLanguage === "hi" ? "Hindi" : "English"}
+                  </span>
+                </div>
+                
+                <div className="bg-gray-50 p-6 rounded-lg">
+                  <h2 className="text-xl font-bold text-gray-800 mb-4">How to Play</h2>
+                  <p className="text-gray-600 mb-4">
+                    This game helps you improve your {game.difficulty} level vocabulary and reading skills in {currentLanguage === "te" ? "Telugu" : currentLanguage === "hi" ? "Hindi" : "English"}.
+                  </p>
+                  
+                  <div className="mt-4 text-gray-700">
+                    <p className="mb-2 font-medium">Game features:</p>
+                    <ul className="list-disc list-inside space-y-1 pl-4">
+                      <li>Interactive gameplay with immediate feedback</li>
+                      <li>Progressive difficulty levels</li>
+                      <li>Audio support for pronunciation</li>
+                      <li>Score tracking and performance monitoring</li>
+                    </ul>
+                  </div>
+                </div>
               </div>
               
-              <Button className="bg-primary hover:bg-primary-600">
-                Start Game
-              </Button>
-            </div>
-            
-            <div className="bg-gray-50 p-6 rounded-lg">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">How to Play</h2>
-              <p className="text-gray-600 mb-4">
-                This game helps you improve your {game.difficulty} level vocabulary and reading skills in {currentLanguage === "te" ? "Telugu" : currentLanguage === "hi" ? "Hindi" : "English"}.
-              </p>
-              
-              <div className="mt-4 text-gray-700">
-                <p className="mb-2 font-medium">Game features:</p>
-                <ul className="list-disc list-inside space-y-1 pl-4">
-                  <li>Interactive gameplay with immediate feedback</li>
-                  <li>Progressive difficulty levels</li>
-                  <li>Audio support for pronunciation</li>
-                  <li>Score tracking and performance monitoring</li>
-                </ul>
+              <div className="lg:w-2/3">
+                <GameContainer 
+                  game={game}
+                  user={user}
+                  currentLanguage={currentLanguage}
+                  difficulty={game.difficulty as "beginner" | "intermediate" | "advanced"}
+                />
               </div>
             </div>
           </div>

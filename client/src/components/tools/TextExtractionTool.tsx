@@ -7,9 +7,10 @@ import { useSpeechRecognition } from "@/lib/hooks/useSpeechRecognition";
 import { useSpeechSynthesis } from "@/lib/hooks/useSpeechSynthesis";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Upload, Camera, Copy, Volume2, Mic } from "lucide-react";
+import { Upload, Camera, Copy, Volume2, Mic, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import stringSimilarity from "string-similarity";
+import { Progress } from "@/components/ui/progress";
 
 interface TextExtractionToolProps {
   user: Omit<User, "password">;
@@ -23,6 +24,8 @@ export default function TextExtractionTool({ user, currentLanguage }: TextExtrac
   const [isExtracting, setIsExtracting] = useState(false);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [feedback, setFeedback] = useState<Array<{ correct: boolean; text: string }>>([]);
+  const [listenCount, setListenCount] = useState(0);
+  const [maxListenCount] = useState(3); // Maximum times a user can listen to the extracted text
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -53,6 +56,7 @@ export default function TextExtractionTool({ user, currentLanguage }: TextExtrac
       setImagePreview(URL.createObjectURL(file));
       setExtractedText("");
       setFeedbackVisible(false);
+      setListenCount(0); // Reset listen count when selecting a new image
     }
   };
 
@@ -65,6 +69,7 @@ export default function TextExtractionTool({ user, currentLanguage }: TextExtrac
       setImagePreview(URL.createObjectURL(file));
       setExtractedText("");
       setFeedbackVisible(false);
+      setListenCount(0); // Reset listen count when dropping a new image
     }
   };
 
@@ -105,6 +110,9 @@ export default function TextExtractionTool({ user, currentLanguage }: TextExtrac
       const text = await recognizeText(selectedImage);
       setExtractedText(text);
       
+      // Reset listen count for new text
+      setListenCount(0);
+      
       // Save to backend
       saveExtractedTextMutation.mutate({ text });
     } catch (error) {
@@ -130,7 +138,25 @@ export default function TextExtractionTool({ user, currentLanguage }: TextExtrac
 
   const speakText = () => {
     if (extractedText) {
-      speak(extractedText, currentLanguage);
+      if (listenCount < maxListenCount) {
+        speak(extractedText, currentLanguage);
+        setListenCount(listenCount + 1); // Increment the listen count
+        
+        if (listenCount === maxListenCount - 1) {
+          // This is the last allowed play
+          toast({
+            title: "Last listen used",
+            description: "You've reached your maximum number of listens. Try reading it yourself!",
+            variant: "destructive"
+          });
+        }
+      } else {
+        toast({
+          title: "Listen limit reached",
+          description: "You've reached the maximum number of listens. Practice reading it yourself now!",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -337,6 +363,21 @@ export default function TextExtractionTool({ user, currentLanguage }: TextExtrac
                     <p className="text-gray-500 text-center italic">Text will appear here after extraction</p>
                   )}
                 </div>
+                
+                {extractedText && (
+                  <div className="mt-2">
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <div className="flex items-center">
+                        <Info className="w-3 h-3 mr-1" />
+                        <span>Listen attempts remaining: {Math.max(0, maxListenCount - listenCount)}/{maxListenCount}</span>
+                      </div>
+                      <Progress 
+                        className="w-24 h-2" 
+                        value={(listenCount / maxListenCount) * 100} 
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
               
               <div className="border border-gray-200 rounded-lg p-4 mb-6">

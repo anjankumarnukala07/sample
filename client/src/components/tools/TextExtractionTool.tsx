@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { User } from "@shared/schema";
 import { motion } from "framer-motion";
@@ -9,6 +9,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Upload, Camera, Copy, Volume2, Mic } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import stringSimilarity from "string-similarity";
 
 interface TextExtractionToolProps {
   user: Omit<User, "password">;
@@ -27,13 +28,14 @@ export default function TextExtractionTool({ user, currentLanguage }: TextExtrac
   const { toast } = useToast();
   
   const { speak, isSpeaking, cancel } = useSpeechSynthesis();
+  // Pass the current language to the speech recognition hook
   const { 
     isListening, 
     transcript, 
     startListening, 
     stopListening,
     resetTranscript
-  } = useSpeechRecognition();
+  } = useSpeechRecognition({ language: currentLanguage });
 
   const saveExtractedTextMutation = useMutation({
     mutationFn: async (data: { text: string }) => {
@@ -140,29 +142,79 @@ export default function TextExtractionTool({ user, currentLanguage }: TextExtrac
   const handleRecordingStop = () => {
     stopListening();
     
-    // Compare the transcript with the extracted text
+    // Compare the transcript with the extracted text using string similarity
     if (transcript && extractedText) {
-      const extractedWords = extractedText.toLowerCase().split(/\s+/);
-      const spokenWords = transcript.toLowerCase().split(/\s+/);
-      
-      const newFeedback: Array<{ correct: boolean; text: string }> = [];
-      
-      // Simple comparison - in a real app, this would be more sophisticated
-      extractedWords.forEach((word, index) => {
-        const matched = spokenWords.some(spokenWord => 
-          spokenWord === word || 
-          spokenWord.includes(word) || 
-          word.includes(spokenWord)
+      // For Telugu, we need a different approach since character-by-character
+      // and word-by-word comparison might not work well
+      if (currentLanguage === "te") {
+        const similarityScore = stringSimilarity.compareTwoStrings(
+          transcript.toLowerCase(), 
+          extractedText.toLowerCase()
         );
         
-        newFeedback.push({
-          correct: matched,
-          text: matched ? `Good pronunciation of "${word}"` : `Try "${word}" again`
+        // Create a single feedback item based on overall similarity
+        const newFeedback: Array<{ correct: boolean; text: string }> = [];
+        
+        // Threshold for "correct" pronunciation
+        const scoreThreshold = 0.6;
+        const isCorrect = similarityScore >= scoreThreshold;
+        
+        // Generate appropriate feedback
+        if (isCorrect) {
+          newFeedback.push({
+            correct: true,
+            text: `Good pronunciation! (${Math.round(similarityScore * 100)}% match)`
+          });
+        } else {
+          newFeedback.push({
+            correct: false,
+            text: `Try again with clearer pronunciation (${Math.round(similarityScore * 100)}% match)`
+          });
+        }
+        
+        // If it's a partial match, add suggestions
+        if (similarityScore > 0.3 && similarityScore < scoreThreshold) {
+          newFeedback.push({
+            correct: false,
+            text: "Focus on pronouncing each character clearly"
+          });
+        }
+        
+        setFeedback(newFeedback);
+        setFeedbackVisible(true);
+      } else {
+        // For non-Telugu languages, use word-by-word comparison
+        const extractedWords = extractedText.toLowerCase().split(/\s+/);
+        const spokenWords = transcript.toLowerCase().split(/\s+/);
+        
+        const newFeedback: Array<{ correct: boolean; text: string }> = [];
+        
+        // Word-by-word comparison using string similarity
+        extractedWords.forEach((word, index) => {
+          // Find the best matching word in the transcript
+          let bestMatch = { target: "", rating: 0 };
+          
+          spokenWords.forEach(spokenWord => {
+            const similarity = stringSimilarity.compareTwoStrings(word, spokenWord);
+            if (similarity > bestMatch.rating) {
+              bestMatch = { target: spokenWord, rating: similarity };
+            }
+          });
+          
+          // Consider it a match if the similarity is above a threshold
+          const matched = bestMatch.rating >= 0.7;
+          
+          newFeedback.push({
+            correct: matched,
+            text: matched 
+              ? `Good pronunciation of "${word}"` 
+              : `Try "${word}" again (heard "${bestMatch.target}")`
+          });
         });
-      });
-      
-      setFeedback(newFeedback);
-      setFeedbackVisible(true);
+        
+        setFeedback(newFeedback);
+        setFeedbackVisible(true);
+      }
     }
   };
 

@@ -1,7 +1,7 @@
 import { User } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
 import { Game } from "@shared/schema";
-import { Link, useParams } from "wouter";
+import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,8 +13,8 @@ interface GamesProps {
 }
 
 export default function Games({ user, currentLanguage }: GamesProps) {
-  const [, params] = useParams();
-  const gameId = params?.id;
+  const [location] = useLocation();
+  const gameId = location.includes('/games/') ? location.split('/games/')[1] : null;
   
   useEffect(() => {
     document.title = "Learning Games - Read-Mentor";
@@ -47,9 +47,9 @@ export default function Games({ user, currentLanguage }: GamesProps) {
     return (
       <main className="container mx-auto px-4 py-8">
         <Link href="/games">
-          <a className="text-primary hover:text-primary-600 font-medium mb-4 inline-block">
+          <span className="text-primary hover:text-primary-600 font-medium mb-4 inline-block">
             &larr; Back to Games
-          </a>
+          </span>
         </Link>
         
         <h1 className="text-3xl font-bold text-gray-800 mb-4 font-nunito">{game.title}</h1>

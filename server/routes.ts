@@ -76,16 +76,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Username and password are required" });
       }
       
+      console.log(`Login attempt for username: ${username}`);
+      
+      // Get all users to check what's in storage
+      const allUsers = Array.from((storage as any).users.values());
+      console.log(`Current users in storage: ${JSON.stringify(allUsers.map(u => u.username))}`);
+      
       const user = await storage.getUserByUsername(username);
-      if (!user || user.password !== password) {
+      if (!user) {
+        console.log(`User ${username} not found in storage`);
+        return res.status(401).json({ message: "Invalid username or password" });
+      }
+      
+      console.log(`User found. Checking password match...`);
+      if (user.password !== password) {
+        console.log(`Password mismatch for user ${username}`);
         return res.status(401).json({ message: "Invalid username or password" });
       }
       
       // Don't return password in response
       const { password: _, ...userWithoutPassword } = user;
       
+      console.log(`Login successful for username: ${username}`);
       res.json(userWithoutPassword);
     } catch (error) {
+      console.error(`Login error: ${error}`);
       res.status(500).json({ message: "Login failed" });
     }
   });

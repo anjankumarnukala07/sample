@@ -14,7 +14,7 @@ interface GamesProps {
 
 export default function Games({ user, currentLanguage }: GamesProps) {
   const [location] = useLocation();
-  const gameId = location.includes('/games/') ? location.split('/games/')[1] : null;
+  const gameId = location.includes('/games/') ? location.split('/games/')[1] : undefined;
   
   useEffect(() => {
     document.title = "Learning Games - Read-Mentor";

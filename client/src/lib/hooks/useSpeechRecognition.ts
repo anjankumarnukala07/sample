@@ -1,20 +1,25 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
 // Add TypeScript definitions for SpeechRecognition API
-interface SpeechRecognitionEvent {
-  results: {
-    isFinal: boolean;
-    length: number;
-    [index: number]: {
-      transcript: string;
-      confidence: number;
-      length: number;
-      [index: number]: {
-        transcript: string;
-        confidence: number;
-      };
-    };
+interface SpeechRecognitionResult {
+  transcript: string;
+  confidence: number;
+}
+
+interface SpeechRecognitionAlternative {
+  readonly length: number;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResultList {
+  readonly length: number;
+  [index: number]: SpeechRecognitionAlternative & {
+    isFinal?: boolean;
   };
+}
+
+interface SpeechRecognitionEvent {
+  readonly results: SpeechRecognitionResultList;
 }
 
 interface SpeechRecognition extends EventTarget {
@@ -76,54 +81,59 @@ export function useSpeechRecognition(options?: UseSpeechRecognitionOptions): Use
   useEffect(() => {
     // Check if SpeechRecognition is supported
     if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      const recognitionInstance = new SpeechRecognition();
-      
-      recognitionInstance.continuous = true;
-      recognitionInstance.interimResults = true;
-      
-      // Set language if provided
-      if (options?.language) {
-        recognitionInstance.lang = getLanguageCode(options.language);
-      }
-      
-      recognitionInstance.onresult = (event) => {
-        let currentTranscript = '';
-        for (let i = 0; i < event.results.length; i++) {
-          // For Telugu, sometimes we need to access all alternatives, not just the first one
-          if (options?.language === 'te') {
-            // Get the best result (highest confidence)
-            let bestResult = event.results[i][0];
-            for (let j = 0; j < event.results[i].length; j++) {
-              if (event.results[i][j].confidence > bestResult.confidence) {
-                bestResult = event.results[i][j];
+      const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognitionClass) {
+        const recognitionInstance = new SpeechRecognitionClass();
+        
+        recognitionInstance.continuous = true;
+        recognitionInstance.interimResults = true;
+        
+        // Set language if provided
+        if (options?.language) {
+          recognitionInstance.lang = getLanguageCode(options.language);
+        }
+        
+        recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
+          let currentTranscript = '';
+          for (let i = 0; i < event.results.length; i++) {
+            // For Telugu, sometimes we need to access all alternatives, not just the first one
+            if (options?.language === 'te') {
+              // Get the best result (highest confidence)
+              let bestResult = event.results[i][0];
+              for (let j = 0; j < event.results[i].length; j++) {
+                if (event.results[i][j].confidence > bestResult.confidence) {
+                  bestResult = event.results[i][j];
+                }
+              }
+              // Check if this result is final
+              const isFinal = 'isFinal' in event.results[i] && event.results[i].isFinal;
+              if (isFinal) {
+                currentTranscript += bestResult.transcript + ' ';
+              }
+            } else {
+              // Default behavior for other languages
+              const isFinal = 'isFinal' in event.results[i] && event.results[i].isFinal;
+              if (isFinal) {
+                currentTranscript += event.results[i][0].transcript + ' ';
               }
             }
-            if (event.results[i].isFinal) {
-              currentTranscript += bestResult.transcript + ' ';
-            }
-          } else {
-            // Default behavior for other languages
-            if (event.results[i].isFinal) {
-              currentTranscript += event.results[i][0].transcript + ' ';
-            }
           }
-        }
-        setTranscript(currentTranscript.trim());
-      };
-      
-      recognitionInstance.onerror = (event) => {
-        console.error('Speech recognition error', event.error);
-        setIsListening(false);
-      };
-      
-      recognitionInstance.onend = () => {
-        setIsListening(false);
-      };
-      
-      setRecognition(recognitionInstance);
-      recognitionRef.current = recognitionInstance;
-      setHasRecognitionSupport(true);
+          setTranscript(currentTranscript.trim());
+        };
+        
+        recognitionInstance.onerror = (event: any) => {
+          console.error('Speech recognition error', event.error);
+          setIsListening(false);
+        };
+        
+        recognitionInstance.onend = () => {
+          setIsListening(false);
+        };
+        
+        // Store the instance in the ref only
+        recognitionRef.current = recognitionInstance;
+        setHasRecognitionSupport(true);
+      }
     } else {
       console.warn('Speech Recognition is not supported in this browser.');
       setHasRecognitionSupport(false);
@@ -138,27 +148,27 @@ export function useSpeechRecognition(options?: UseSpeechRecognitionOptions): Use
   }, [options?.language]);
 
   const startListening = useCallback(() => {
-    if (recognition) {
+    if (recognitionRef.current) {
       try {
         // Update language if needed
         if (options?.language) {
-          recognition.lang = getLanguageCode(options.language);
+          recognitionRef.current.lang = getLanguageCode(options.language);
         }
         
-        recognition.start();
+        recognitionRef.current.start();
         setIsListening(true);
       } catch (error) {
         console.error('Error starting speech recognition:', error);
       }
     }
-  }, [recognition, options?.language]);
+  }, [options?.language]);
 
   const stopListening = useCallback(() => {
-    if (recognition) {
-      recognition.stop();
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
       setIsListening(false);
     }
-  }, [recognition]);
+  }, []);
 
   const resetTranscript = useCallback(() => {
     setTranscript("");
